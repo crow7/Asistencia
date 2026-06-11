@@ -392,7 +392,7 @@ function handleQR(raw) {
   cooldown[alumnoId] = ahora;
 
   const hora  = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  const fecha = fecha: new Date().toLocaleTimeString('es-AR', { day:'2-digit', month:'2-digit', year:'4-digit' })
+  const fecha = fecha: new Date().toLocaleDateString('es-AR', {day: '2-digit', month: '2-digit', year: 'numeric'});
   const clase = document.getElementById('clase-input').value || '—';
   const isDup = registros.some(r => r.alumnoId === alumnoId);
 
