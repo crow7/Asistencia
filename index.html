@@ -3,249 +3,322 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>📲 Escáner QR Asistencia</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>📲 Asistencia QR</title>
 <style>
   :root {
-    --navy: #1F3864; --blue: #2E75B6; --green: #1E5C1E;
-    --lgreen: #E2EFDA; --red: #C00000; --lred: #FCE4D6;
-    --bg: #F4F7FB; --card: #fff; --border: #D0DCE8;
-    --text: #1a1a2e; --muted: #6B7A8D;
+    --navy:#1F3864; --blue:#2E75B6; --green:#1E5C1E;
+    --lgreen:#E2EFDA; --red:#C00000; --bg:#F4F7FB;
+    --card:#fff; --border:#D0DCE8; --text:#1a1a2e; --muted:#6B7A8D;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;}
 
-  header {
-    background: var(--navy); color: #fff; padding: 14px 20px;
-    display: flex; align-items: center; gap: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.3);
-  }
-  header h1 { font-size: 17px; }
-  header span { font-size: 26px; }
+  header{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;}
+  header h1{font-size:16px;line-height:1.2;}
+  header small{font-size:11px;opacity:.7;display:block;}
 
-  .tabs { display: flex; background: var(--navy); border-top: 1px solid rgba(255,255,255,.15); }
-  .tab { flex: 1; padding: 10px; text-align: center; color: rgba(255,255,255,.6);
-         font-size: 13px; cursor: pointer; border: none; background: none; transition: .2s; }
-  .tab.active { color: #fff; border-bottom: 3px solid #4FC3F7; }
+  .tabs{display:flex;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);}
+  .tab{flex:1;padding:10px 4px;text-align:center;color:rgba(255,255,255,.55);font-size:12px;
+       cursor:pointer;border:none;background:none;transition:.2s;}
+  .tab.active{color:#fff;border-bottom:3px solid #4FC3F7;}
 
-  .page { display: none; padding: 16px; }
-  .page.active { display: block; }
+  .page{display:none;padding:14px;}
+  .page.active{display:block;}
 
   /* SCANNER */
-  #video-wrap {
-    position: relative; border-radius: 14px; overflow: hidden;
-    background: #000; aspect-ratio: 1/1; max-width: 360px; margin: 0 auto;
-    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  #scanner-wrap{
+    position:relative;border-radius:14px;overflow:hidden;
+    background:#000;width:100%;max-width:380px;margin:0 auto;
+    aspect-ratio:1/1;box-shadow:0 4px 20px rgba(0,0,0,.3);
   }
-  #video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .scan-overlay {
-    position: absolute; inset: 0; pointer-events: none;
-    display: flex; align-items: center; justify-content: center;
+  #video{width:100%;height:100%;object-fit:cover;display:block;}
+  #overlay{position:absolute;inset:0;pointer-events:none;}
+  .frame{
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:62%;height:62%;
+    box-shadow:0 0 0 9999px rgba(0,0,0,.5);
+    border-radius:10px;
   }
-  .scan-frame {
-    width: 65%; height: 65%; border: 3px solid rgba(255,255,255,.9);
-    border-radius: 12px; position: relative;
-    box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+  .corner{position:absolute;width:22px;height:22px;border-color:#4FC3F7;border-style:solid;}
+  .corner.tl{top:0;left:0;border-width:4px 0 0 4px;border-radius:6px 0 0 0;}
+  .corner.tr{top:0;right:0;border-width:4px 4px 0 0;border-radius:0 6px 0 0;}
+  .corner.bl{bottom:0;left:0;border-width:0 0 4px 4px;border-radius:0 0 0 6px;}
+  .corner.br{bottom:0;right:0;border-width:0 4px 4px 0;border-radius:0 0 6px 0;}
+  .scanline{
+    position:absolute;left:4px;right:4px;height:2px;
+    background:linear-gradient(90deg,transparent,#4FC3F7,transparent);
+    animation:scanmove 1.8s linear infinite;top:4px;
   }
-  .scan-line {
-    position: absolute; left: 6px; right: 6px; height: 2px;
-    background: linear-gradient(90deg, transparent, #4FC3F7, transparent);
-    animation: scan 2s linear infinite;
+  @keyframes scanmove{0%{top:4px}100%{top:calc(100% - 6px)}}
+  #flash{
+    position:absolute;inset:0;background:rgba(0,255,100,.35);
+    opacity:0;transition:opacity .1s;pointer-events:none;border-radius:14px;
   }
-  @keyframes scan { 0%{top:6px} 100%{top:calc(100% - 8px)} }
+  #flash.show{opacity:1;}
 
-  #scan-status {
-    text-align: center; margin: 12px 0; font-size: 14px;
-    color: var(--muted); min-height: 20px;
-  }
+  #status{text-align:center;margin:10px 0 2px;font-size:13px;color:var(--muted);min-height:18px;}
+  #fps-info{text-align:center;font-size:10px;color:var(--muted);margin-bottom:8px;}
 
-  .btn {
-    display: block; width: 100%; max-width: 360px; margin: 8px auto;
-    padding: 14px; border: none; border-radius: 10px; font-size: 15px;
-    font-weight: bold; cursor: pointer; transition: .15s;
-  }
-  .btn-blue  { background: var(--blue); color: #fff; }
-  .btn-green { background: var(--green); color: #fff; }
-  .btn-red   { background: var(--red); color: #fff; }
-  .btn:active { opacity: .8; transform: scale(.98); }
+  .btn{display:block;width:100%;max-width:380px;margin:6px auto;
+       padding:13px;border:none;border-radius:10px;font-size:15px;
+       font-weight:bold;cursor:pointer;transition:.15s;}
+  .btn-blue {background:var(--blue); color:#fff;}
+  .btn-green{background:var(--green);color:#fff;}
+  .btn-red  {background:var(--red);  color:#fff;}
+  .btn-gray {background:#e0e0e0;     color:#333;}
+  .btn:active{opacity:.8;transform:scale(.98);}
 
-  /* TOAST */
-  #toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--green); color: #fff; padding: 14px 22px;
-    border-radius: 12px; font-size: 15px; font-weight: bold;
-    transition: transform .3s; z-index: 999; white-space: nowrap;
-    box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  /* CONFIG CARD */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .card h3{font-size:14px;color:var(--navy);margin-bottom:10px;}
+  .input-label{font-size:12px;color:var(--muted);margin-bottom:4px;display:block;}
+  input[type=text],input[type=url]{
+    width:100%;padding:9px 11px;border:1px solid var(--border);
+    border-radius:8px;font-size:13px;margin-bottom:4px;
+    background:#fff;
   }
-  #toast.show { transform: translateX(-50%) translateY(0); }
-  #toast.error { background: var(--red); }
+  #conn-status{font-size:12px;color:var(--muted);margin-top:4px;min-height:16px;transition:color .3s;}
 
   /* LOG */
-  .log-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 10px;
-  }
-  .log-header h2 { font-size: 16px; color: var(--navy); }
-  .badge {
-    background: var(--blue); color: #fff; border-radius: 99px;
-    padding: 3px 11px; font-size: 13px; font-weight: bold;
-  }
-  #log-list { display: flex; flex-direction: column; gap: 8px; }
-  .log-item {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; align-items: center;
-  }
-  .log-item.dup { border-color: #F4B942; background: #FFFBF0; }
-  .log-icon { font-size: 24px; flex-shrink: 0; }
-  .log-body { flex: 1; }
-  .log-name { font-weight: bold; font-size: 15px; }
-  .log-id   { font-size: 12px; color: var(--muted); }
-  .log-time { font-size: 12px; color: var(--muted); margin-left: auto; flex-shrink: 0; }
-  .log-empty { text-align: center; color: var(--muted); padding: 30px; font-size: 14px; }
+  .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .log-header h2{font-size:16px;color:var(--navy);}
+  .badge{background:var(--blue);color:#fff;border-radius:99px;padding:3px 11px;font-size:12px;font-weight:bold;}
+  #log-list{display:flex;flex-direction:column;gap:8px;}
+  .log-item{background:var(--card);border:1px solid var(--border);border-radius:10px;
+             padding:11px 13px;display:flex;gap:10px;align-items:center;}
+  .log-item.dup{border-color:#F4B942;background:#FFFBF0;}
+  .log-item.sending{border-color:var(--blue);background:#EBF3FB;}
+  .log-item.sent{border-left:4px solid var(--green);}
+  .log-item.failed{border-left:4px solid var(--red);}
+  .log-icon{font-size:22px;flex-shrink:0;}
+  .log-name{font-weight:bold;font-size:14px;}
+  .log-meta{font-size:11px;color:var(--muted);}
+  .log-time{font-size:11px;color:var(--muted);margin-left:auto;flex-shrink:0;text-align:right;}
+  .sync-dot{font-size:10px;}
+  .log-empty{text-align:center;color:var(--muted);padding:30px;font-size:14px;}
 
   /* EXPORT */
-  .export-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 18px; margin-bottom: 14px;
-  }
-  .export-card h3 { font-size: 14px; color: var(--navy); margin-bottom: 10px; }
-  .stat-row { display: flex; gap: 10px; margin-bottom: 14px; }
-  .stat {
-    flex: 1; background: var(--bg); border-radius: 10px;
-    padding: 12px; text-align: center; border: 1px solid var(--border);
-  }
-  .stat-num { font-size: 28px; font-weight: bold; color: var(--blue); }
-  .stat-lbl { font-size: 12px; color: var(--muted); }
+  .stat-row{display:flex;gap:8px;margin-bottom:12px;}
+  .stat{flex:1;background:var(--bg);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border);}
+  .stat-num{font-size:26px;font-weight:bold;color:var(--blue);}
+  .stat-lbl{font-size:11px;color:var(--muted);}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{background:var(--navy);color:#fff;padding:7px 5px;text-align:left;}
+  td{padding:7px 5px;border-bottom:1px solid var(--border);}
+  tr:nth-child(even) td{background:var(--bg);}
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: var(--navy); color: #fff; padding: 8px 6px; text-align: left; }
-  td { padding: 8px 6px; border-bottom: 1px solid var(--border); }
-  tr:nth-child(even) td { background: var(--bg); }
-
-  #sheets-url { width: 100%; padding: 10px; border-radius: 8px; margin: 8px 0;
-                border: 1px solid var(--border); font-size: 13px; }
+  /* TOAST */
+  #toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(90px);
+    background:var(--green);color:#fff;padding:13px 20px;border-radius:12px;
+    font-size:14px;font-weight:bold;transition:transform .3s;z-index:999;
+    max-width:90vw;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.3);pointer-events:none;
+  }
+  #toast.show{transform:translateX(-50%) translateY(0);}
+  #toast.warn{background:#B8860B;}
+  #toast.err {background:var(--red);}
 </style>
 </head>
 <body>
 
 <header>
-  <span>📲</span>
+  <span style="font-size:28px">📲</span>
   <div>
     <h1>Escáner QR — Asistencia</h1>
-    <div id="clase-label" style="font-size:12px;opacity:.75">Sin clase activa</div>
+    <small id="clase-label">Sin clase configurada</small>
   </div>
 </header>
 
 <div class="tabs">
-  <button class="tab active" onclick="showPage('scan','this')">📷 Escanear</button>
-  <button class="tab" onclick="showPage('log','this')">📋 Presentes <span id="badge-count" class="badge" style="font-size:11px">0</span></button>
-  <button class="tab" onclick="showPage('export','this')">📤 Exportar</button>
+  <button class="tab active" onclick="goPage('scan',this)">📷 Escanear</button>
+  <button class="tab" onclick="goPage('log',this)">
+    📋 Presentes&nbsp;<span id="cnt" class="badge">0</span>
+  </button>
+  <button class="tab" onclick="goPage('export',this)">📤 Exportar</button>
 </div>
 
-<!-- PAGE: SCAN -->
+<!-- ── PÁGINA: ESCANEAR ───────────────────────────────────── -->
 <div id="page-scan" class="page active">
-  <div id="video-wrap">
-    <video id="video" playsinline autoplay muted></video>
-    <div class="scan-overlay"><div class="scan-frame"><div class="scan-line"></div></div></div>
+
+  <div id="scanner-wrap">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="canvas" style="display:none"></canvas>
+    <div id="overlay">
+      <div class="frame">
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="scanline"></div>
+      </div>
+    </div>
+    <div id="flash"></div>
   </div>
-  <p id="scan-status">Presioná INICIAR para escanear</p>
+
+  <p id="status">Presioná INICIAR para escanear</p>
+  <p id="fps-info">&nbsp;</p>
+
   <button class="btn btn-blue" id="btn-start" onclick="startScan()">▶ INICIAR ESCÁNER</button>
   <button class="btn btn-red"  id="btn-stop"  onclick="stopScan()" style="display:none">⏹ DETENER</button>
+  <button class="btn btn-gray" id="btn-cam"   onclick="switchCam()" style="display:none">🔄 Cambiar cámara</button>
 
-  <div class="export-card" style="margin-top:16px">
-    <h3>⚙️ Configuración de clase</h3>
-    <label style="font-size:13px;color:var(--muted)">Nombre de la clase / materia:</label>
-    <input id="clase-input" type="text" placeholder="Ej: Matemáticas 3°A — 10/06/2026"
-           style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);margin-top:6px;font-size:14px"
-           oninput="document.getElementById('clase-label').textContent=this.value||'Sin clase activa'">
+  <div class="card" style="margin-top:14px">
+    <h3>⚙️ Configuración</h3>
+
+    <label class="input-label">Nombre de la clase:</label>
+    <input type="text" id="clase-input"
+           placeholder="Ej: Matemáticas 3°A — 10/06/2026"
+           oninput="document.getElementById('clase-label').textContent=this.value||'Sin clase configurada'">
+
+    <label class="input-label" style="margin-top:8px">URL Web App (Apps Script):</label>
+    <input type="url" id="sheets-url"
+           placeholder="https://script.google.com/macros/s/.../exec"
+           oninput="guardarConfig()">
+
+    <div id="conn-status">Sin configurar — los registros se guardan solo localmente</div>
+
+    <button class="btn btn-gray" onclick="probarConexion()"
+            style="margin-top:10px;padding:8px;font-size:12px">
+      🔌 Probar conexión con Sheets
+    </button>
   </div>
 </div>
 
-<!-- PAGE: LOG -->
+<!-- ── PÁGINA: PRESENTES ─────────────────────────────────── -->
 <div id="page-log" class="page">
   <div class="log-header">
     <h2>Presentes registrados</h2>
-    <span class="badge" id="badge-total">0</span>
+    <span class="badge" id="cnt2">0</span>
   </div>
-  <div id="log-list"><p class="log-empty">Aún no hay registros. Escaneá un QR para empezar.</p></div>
+  <div id="log-list">
+    <p class="log-empty">Escaneá un QR para empezar.</p>
+  </div>
 </div>
 
-<!-- PAGE: EXPORT -->
+<!-- ── PÁGINA: EXPORTAR ──────────────────────────────────── -->
 <div id="page-export" class="page">
-  <div class="export-card">
+  <div class="card">
     <h3>📊 Resumen de la clase</h3>
     <div class="stat-row">
-      <div class="stat"><div class="stat-num" id="exp-total">0</div><div class="stat-lbl">Presentes</div></div>
-      <div class="stat"><div class="stat-num" id="exp-dup">0</div><div class="stat-lbl">Duplicados</div></div>
-      <div class="stat"><div class="stat-num" id="exp-time">—</div><div class="stat-lbl">Hora inicio</div></div>
+      <div class="stat"><div class="stat-num" id="e-total">0</div><div class="stat-lbl">Presentes</div></div>
+      <div class="stat"><div class="stat-num" id="e-sync">0</div><div class="stat-lbl">Sincronizados</div></div>
+      <div class="stat"><div class="stat-num" id="e-fail">0</div><div class="stat-lbl">Sin enviar</div></div>
     </div>
-    <div id="exp-table-wrap"></div>
+    <div id="e-table"></div>
   </div>
 
-  <div class="export-card">
-    <h3>⬇️ Descargar</h3>
-    <button class="btn btn-green" onclick="exportCSV()" style="margin-bottom:8px">📥 Descargar CSV (abrí en Sheets)</button>
-    <button class="btn btn-blue"  onclick="copyJSON()">📋 Copiar como JSON</button>
+  <div class="card">
+    <h3>🔄 Reenviar fallidos</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      Si hubo errores de red, reintentá enviar los registros pendientes.
+    </p>
+    <button class="btn btn-blue" onclick="reenviarFallidos()">🔄 Reintentar registros sin enviar</button>
   </div>
 
-  <div class="export-card">
-    <h3>🔗 Enviar a Google Sheets (URL del script)</h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:6px">Pegá la URL de tu Web App de Apps Script para enviar automáticamente:</p>
-    <input id="sheets-url" type="url" placeholder="https://script.google.com/macros/s/TU_ID/exec">
-    <button class="btn btn-blue" onclick="sendToSheets()">🚀 Enviar a Google Sheets</button>
+  <div class="card">
+    <h3>⬇️ Respaldo local</h3>
+    <button class="btn btn-green" onclick="exportCSV()" style="margin-bottom:6px">📥 Descargar CSV</button>
+    <button class="btn btn-gray"  onclick="copyTxt()">📋 Copiar lista como texto</button>
   </div>
 
-  <div class="export-card" style="border-color:#F4B942">
+  <div class="card" style="border-color:#F4B942">
     <h3>🗑️ Nueva clase</h3>
-    <button class="btn btn-red" onclick="clearSession()">Borrar registros y empezar nueva clase</button>
+    <button class="btn btn-red" onclick="clearAll()">Borrar registros y empezar nueva clase</button>
   </div>
 </div>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
-<script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"
+        integrity="sha512-cmbAWSo7NMfSEy3lFnT9kFODFu/Nq5W1Z0MvxC+Nqx0X+r6jt1TpNg1jxRB0sXzVPBsYN0gRhfnCBSxCvCHA=="
+        crossorigin="anonymous"></script>
 <script>
-// ── STATE ──────────────────────────────────────────────────
-let registros = JSON.parse(localStorage.getItem('asistencia_registros') || '[]');
-let scanning  = false;
-let stream    = null;
-let rafId     = null;
-let canvas, ctx, video;
-let beepCtx   = null;
-const COOLDOWN_MS = 4000;
-const lastScan = {};
+// ── ESTADO ────────────────────────────────────────────────────
+let registros  = [];   // { alumnoId, nombre, hora, fecha, clase, isDup, syncStatus }
+let scanning   = false;
+let stream     = null;
+let rafId      = null;
+let camIdx     = 0;
+let camList    = [];
+let audioCtx   = null;
+let frameCount = 0, lastFpsTime = 0;
+const cooldown = {};
 
-// ── INIT ───────────────────────────────────────────────────
+// syncStatus: 'pending' | 'sending' | 'ok' | 'failed'
+
+const video  = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+
+// ── PERSISTENCIA DE CONFIG ────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  video  = document.getElementById('video');
-  canvas = document.createElement('canvas');
-  ctx    = canvas.getContext('2d', { willReadFrequently: true });
-  updateUI();
+  const url   = localStorage.getItem('sheets_url')   || '';
+  const clase = localStorage.getItem('clase_actual') || '';
+  if (url)   {
+    document.getElementById('sheets-url').value = url;
+    setConnStatus('⚙️ URL cargada — usá "Probar conexión" para verificar', 'var(--muted)');
+  }
+  if (clase) {
+    document.getElementById('clase-input').value = clase;
+    document.getElementById('clase-label').textContent = clase;
+  }
 });
 
-function showPage(name, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  event.target.classList.add('active');
-  if (name === 'export') refreshExport();
+function guardarConfig() {
+  const url   = document.getElementById('sheets-url').value.trim();
+  const clase = document.getElementById('clase-input').value.trim();
+  if (url)   localStorage.setItem('sheets_url',   url);
+  if (clase) localStorage.setItem('clase_actual', clase);
 }
 
-// ── SCANNER ────────────────────────────────────────────────
-async function startScan() {
+document.getElementById('clase-input').addEventListener('input', guardarConfig);
+
+// ── CÁMARA ────────────────────────────────────────────────────
+async function getCameras() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } }
-    });
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    camList = devs.filter(d => d.kind === 'videoinput');
+  } catch(e) { camList = []; }
+}
+
+async function startScan() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  }
+  await getCameras();
+
+  let constraints = {
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } }
+  };
+  if (camList.length > 0 && camIdx > 0) {
+    constraints.video = {
+      deviceId: { exact: camList[camIdx % camList.length].deviceId },
+      width: { ideal: 1280 }, height: { ideal: 1280 }
+    };
+  }
+
+  try {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
-    await video.play();
+    await new Promise(resolve => {
+      video.onloadedmetadata = () => video.play().then(resolve).catch(resolve);
+    });
+
     scanning = true;
     document.getElementById('btn-start').style.display = 'none';
     document.getElementById('btn-stop').style.display  = 'block';
-    document.getElementById('scan-status').textContent = '🔍 Apuntá al QR del alumno...';
+    if (camList.length > 1)
+      document.getElementById('btn-cam').style.display = 'block';
+
+    setStatus('🔍 Apuntá al código QR del alumno...');
+    lastFpsTime = performance.now();
     tick();
+
   } catch(e) {
-    toast('❌ No se pudo acceder a la cámara', true);
+    setStatus('❌ Error: ' + e.message);
+    toast('No se pudo acceder a la cámara', 'err');
   }
 }
 
@@ -254,178 +327,319 @@ function stopScan() {
   if (stream) stream.getTracks().forEach(t => t.stop());
   if (rafId)  cancelAnimationFrame(rafId);
   video.srcObject = null;
+  stream = null;
   document.getElementById('btn-start').style.display = 'block';
   document.getElementById('btn-stop').style.display  = 'none';
-  document.getElementById('scan-status').textContent  = 'Escáner detenido.';
+  document.getElementById('btn-cam').style.display   = 'none';
+  setStatus('Escáner detenido.');
+  document.getElementById('fps-info').textContent = '';
 }
 
+async function switchCam() {
+  camIdx++;
+  await startScan();
+}
+
+// ── LOOP DE ESCANEO ───────────────────────────────────────────
 function tick() {
   if (!scanning) return;
   rafId = requestAnimationFrame(tick);
-  if (video.readyState < 2) return;
+  if (video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) return;
+  if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
   canvas.width  = video.videoWidth;
   canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0);
-  const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-  if (code) handleQR(code.data);
-}
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-function handleQR(rawData) {
-  // Extraer alumno_id y nombre de la URL prefilled
-  let alumnoId = "", nombre = "";
-  try {
-    const url    = new URL(rawData);
-    const params = url.searchParams;
-    // Buscar entry.XXXXX que contenga el id
-    params.forEach((val, key) => {
-      if (key.startsWith('entry.')) {
-        if (!alumnoId && val.match(/^ALU-/i)) alumnoId = val;
-        else if (!nombre) nombre = val;
-      }
-    });
-    // Fallback: toda la URL como id si no tiene formato prefilled
-    if (!alumnoId) alumnoId = rawData.slice(0, 40);
-  } catch {
-    alumnoId = rawData.slice(0, 40);
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime > 1000) {
+    document.getElementById('fps-info').textContent =
+      `📷 ${canvas.width}×${canvas.height} px | ${frameCount} fps`;
+    frameCount = 0;
+    lastFpsTime = now;
   }
 
-  const key = alumnoId;
-  const now = Date.now();
-  const isDup = registros.some(r => r.alumnoId === key);
+  let imageData;
+  try { imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); }
+  catch(e) { return; }
 
-  if (lastScan[key] && (now - lastScan[key]) < COOLDOWN_MS) return;
-  lastScan[key] = now;
+  const code = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'dontInvert'
+  });
+  if (code && code.data) handleQR(code.data);
+}
 
-  const hora = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+// ── PROCESAR QR ───────────────────────────────────────────────
+function handleQR(raw) {
+  let alumnoId = '';
+  let nombre   = '';
+
+  try {
+    const url     = new URL(raw);
+    const entries = [];
+    url.searchParams.forEach((val, key) => {
+      if (key.startsWith('entry.')) entries.push(val);
+    });
+    if (entries[0]) alumnoId = entries[0];
+    if (entries[1]) nombre   = entries[1];
+  } catch(e) {
+    alumnoId = raw.slice(0, 60);
+  }
+
+  if (!alumnoId) alumnoId = raw.slice(0, 60);
+
+  // Cooldown: ignorar el mismo QR por 5 segundos
+  const ahora = Date.now();
+  if (cooldown[alumnoId] && ahora - cooldown[alumnoId] < 5000) return;
+  cooldown[alumnoId] = ahora;
+
+  const hora  = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
   const fecha = new Date().toLocaleDateString('es-AR');
   const clase = document.getElementById('clase-input').value || '—';
+  const isDup = registros.some(r => r.alumnoId === alumnoId);
 
-  const reg = { alumnoId, nombre, hora, fecha, clase, dup: isDup, raw: rawData };
+  const reg = { alumnoId, nombre, hora, fecha, clase, isDup, syncStatus: 'pending', raw };
   registros.push(reg);
-  localStorage.setItem('asistencia_registros', JSON.stringify(registros));
 
-  beep(isDup);
+  flashScreen();
+  beep(isDup ? 'warn' : 'ok');
+
   const msg = isDup
     ? `⚠️ ${nombre || alumnoId} — ya registrado`
     : `✅ ${nombre || alumnoId} — presente!`;
-  toast(msg, isDup);
-  document.getElementById('scan-status').textContent = msg;
-  updateUI();
+
+  setStatus(msg);
+  toast(msg, isDup ? 'warn' : '');
+  updateCounts();
+  renderLog();
+
+  // Enviar a Sheets solo si no es duplicado
+  if (!isDup) enviarASheets(reg);
 }
 
-// ── AUDIO BIP ──────────────────────────────────────────────
-function beep(isWarn = false) {
+// ── ENVÍO AUTOMÁTICO A SHEETS ─────────────────────────────────
+async function enviarASheets(reg) {
+  const url = document.getElementById('sheets-url').value.trim();
+
+  if (!url) {
+    reg.syncStatus = 'failed';
+    setConnStatus('⚠️ URL no configurada — registros guardados solo localmente', '#B8860B');
+    renderLog();
+    return;
+  }
+
+  reg.syncStatus = 'sending';
+  renderLog();
+  setConnStatus('🔄 Enviando...', 'var(--blue)');
+
   try {
-    if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = beepCtx.createOscillator();
-    const g = beepCtx.createGain();
-    o.connect(g); g.connect(beepCtx.destination);
-    o.frequency.value = isWarn ? 400 : 880;
-    o.type = isWarn ? 'sawtooth' : 'sine';
-    g.gain.setValueAtTime(0.4, beepCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, beepCtx.currentTime + (isWarn ? 0.5 : 0.25));
-    o.start(beepCtx.currentTime);
-    o.stop(beepCtx.currentTime + (isWarn ? 0.5 : 0.25));
+    await fetch(url, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        alumnoId: reg.alumnoId,
+        nombre:   reg.nombre,
+        hora:     reg.hora,
+        fecha:    reg.fecha,
+        clase:    reg.clase,
+      })
+    });
+
+    // Con mode: no-cors no recibimos respuesta, pero si no lanza excepción = enviado OK
+    reg.syncStatus = 'ok';
+    setConnStatus(`✅ Enviado: ${reg.nombre || reg.alumnoId} a las ${reg.hora}`, 'var(--green)');
+
+  } catch(err) {
+    reg.syncStatus = 'failed';
+    setConnStatus(`❌ Sin conexión — ${reg.nombre || reg.alumnoId} guardado localmente`, 'var(--red)');
+  }
+
+  renderLog();
+  updateCounts();
+}
+
+// ── PROBAR CONEXIÓN ───────────────────────────────────────────
+async function probarConexion() {
+  const url = document.getElementById('sheets-url').value.trim();
+  if (!url) {
+    toast('Ingresá la URL primero', 'err'); return;
+  }
+  setConnStatus('🔄 Probando conexión...', 'var(--blue)');
+  try {
+    // GET para verificar que la Web App responde
+    const res = await fetch(url, { mode: 'no-cors' });
+    // no-cors siempre devuelve opaque response (no podemos leer el body)
+    // pero si no lanza error, el servidor está activo
+    setConnStatus('✅ Conexión OK — la Web App responde correctamente', 'var(--green)');
+    toast('✅ Conexión exitosa con Google Sheets');
+  } catch(e) {
+    setConnStatus('❌ No se pudo conectar — verificá la URL', 'var(--red)');
+    toast('Error de conexión: ' + e.message, 'err');
+  }
+}
+
+// ── REENVIAR FALLIDOS ─────────────────────────────────────────
+async function reenviarFallidos() {
+  const fallidos = registros.filter(r => r.syncStatus === 'failed' && !r.isDup);
+  if (!fallidos.length) {
+    toast('No hay registros pendientes de envío'); return;
+  }
+  toast(`Reenviando ${fallidos.length} registros...`);
+  for (const reg of fallidos) {
+    await enviarASheets(reg);
+    await new Promise(r => setTimeout(r, 300)); // pequeña pausa entre requests
+  }
+  refreshExport();
+  toast(`✅ Reenvío completado`);
+}
+
+// ── FEEDBACK VISUAL Y SONORO ──────────────────────────────────
+function flashScreen() {
+  const f = document.getElementById('flash');
+  f.classList.add('show');
+  setTimeout(() => f.classList.remove('show'), 150);
+}
+
+function beep(type = 'ok') {
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    if (type === 'ok') {
+      o.type = 'sine';
+      o.frequency.setValueAtTime(880,  audioCtx.currentTime);
+      o.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.1);
+      g.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+      o.start(); o.stop(audioCtx.currentTime + 0.25);
+    } else {
+      o.type = 'sawtooth';
+      o.frequency.value = 300;
+      g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+      o.start(); o.stop(audioCtx.currentTime + 0.4);
+    }
   } catch(e) {}
 }
 
-// ── UI HELPERS ─────────────────────────────────────────────
-function updateUI() {
-  const uniq = [...new Set(registros.filter(r => !r.dup).map(r => r.alumnoId))].length;
-  document.getElementById('badge-count').textContent = uniq;
-  document.getElementById('badge-total').textContent = uniq;
-  renderLog();
+// ── HELPERS DE UI ─────────────────────────────────────────────
+function setStatus(msg)          { document.getElementById('status').textContent = msg; }
+function setConnStatus(msg, color) {
+  const el = document.getElementById('conn-status');
+  el.textContent   = msg;
+  el.style.color   = color;
 }
 
+function updateCounts() {
+  const uniq = new Set(registros.filter(r => !r.isDup).map(r => r.alumnoId)).size;
+  document.getElementById('cnt').textContent  = uniq;
+  document.getElementById('cnt2').textContent = uniq;
+}
+
+const syncIcon = { pending:'⏳', sending:'🔄', ok:'☁️', failed:'⚠️' };
+const syncLabel = { pending:'Pendiente', sending:'Enviando...', ok:'En Sheets', failed:'Sin enviar' };
+
 function renderLog() {
-  const list = document.getElementById('log-list');
+  const el = document.getElementById('log-list');
   if (!registros.length) {
-    list.innerHTML = '<p class="log-empty">Aún no hay registros.</p>'; return;
+    el.innerHTML = '<p class="log-empty">Escaneá un QR para empezar.</p>'; return;
   }
-  list.innerHTML = [...registros].reverse().map(r => `
-    <div class="log-item ${r.dup ? 'dup' : ''}">
-      <span class="log-icon">${r.dup ? '⚠️' : '✅'}</span>
-      <div class="log-body">
+  el.innerHTML = [...registros].reverse().map(r => `
+    <div class="log-item ${r.isDup ? 'dup' : r.syncStatus === 'ok' ? 'sent' : r.syncStatus === 'failed' ? 'failed' : ''}">
+      <span class="log-icon">${r.isDup ? '⚠️' : '✅'}</span>
+      <div style="flex:1;min-width:0">
         <div class="log-name">${r.nombre || r.alumnoId}</div>
-        <div class="log-id">ID: ${r.alumnoId} ${r.dup ? '— <strong>Duplicado</strong>' : ''}</div>
+        <div class="log-meta">
+          ID: ${r.alumnoId}
+          ${r.isDup ? ' — <strong>Duplicado</strong>' : ''}
+        </div>
       </div>
-      <span class="log-time">${r.hora}</span>
+      <div class="log-time">
+        ${r.hora}<br>
+        <span class="sync-dot" title="${syncLabel[r.syncStatus]||''}">
+          ${r.isDup ? '' : (syncIcon[r.syncStatus] || '⏳') + ' ' + (syncLabel[r.syncStatus] || '')}
+        </span>
+      </div>
     </div>`).join('');
 }
 
+function goPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'export') refreshExport();
+}
+
+// ── EXPORTAR ──────────────────────────────────────────────────
 function refreshExport() {
-  const uniq = [...new Map(registros.map(r => [r.alumnoId, r])).values()].filter(r => !r.dup || registros.findIndex(x=>x.alumnoId===r.alumnoId)===registros.indexOf(r));
-  const presentes = registros.filter(r => !r.dup);
-  const dups = registros.filter(r => r.dup).length;
-  document.getElementById('exp-total').textContent = presentes.length;
-  document.getElementById('exp-dup').textContent   = dups;
-  document.getElementById('exp-time').textContent  = presentes[0]?.hora || '—';
+  const presentes = registros.filter(r => !r.isDup);
+  const synced    = presentes.filter(r => r.syncStatus === 'ok').length;
+  const failed    = presentes.filter(r => r.syncStatus === 'failed').length;
 
-  const rows = [...new Map(registros.map(r=>[r.alumnoId,r])).values()];
-  document.getElementById('exp-table-wrap').innerHTML = rows.length ? `
-    <table>
-      <tr><th>#</th><th>ID</th><th>Nombre</th><th>Hora</th></tr>
-      ${rows.map((r,i) => `<tr><td>${i+1}</td><td>${r.alumnoId}</td><td>${r.nombre||'—'}</td><td>${r.hora}</td></tr>`).join('')}
-    </table>` : '<p style="color:var(--muted);font-size:13px">Sin registros aún.</p>';
+  document.getElementById('e-total').textContent = presentes.length;
+  document.getElementById('e-sync').textContent  = synced;
+  document.getElementById('e-fail').textContent  = failed;
+
+  const unique = [...new Map(registros.map(r => [r.alumnoId, r])).values()];
+  document.getElementById('e-table').innerHTML = unique.length
+    ? `<table>
+        <tr><th>#</th><th>Nombre</th><th>Hora</th><th>Sheets</th></tr>
+        ${unique.map((r,i) => `
+          <tr>
+            <td>${i+1}</td>
+            <td>${r.nombre || r.alumnoId}</td>
+            <td>${r.hora}</td>
+            <td>${r.isDup ? '—' : (syncIcon[r.syncStatus]||'⏳')}</td>
+          </tr>`).join('')}
+       </table>`
+    : '<p style="color:var(--muted);font-size:13px;padding:8px 0">Sin registros aún.</p>';
 }
 
-function toast(msg, isErr = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = isErr ? 'error show' : 'show';
-  clearTimeout(t._tid);
-  t._tid = setTimeout(() => t.classList.remove('show'), 2800);
-}
-
-// ── EXPORT ─────────────────────────────────────────────────
 function exportCSV() {
-  const rows = [...new Map(registros.map(r=>[r.alumnoId,r])).values()];
-  if (!rows.length) { toast('No hay registros para exportar', true); return; }
+  const rows = [...new Map(registros.map(r => [r.alumnoId, r])).values()];
+  if (!rows.length) { toast('No hay registros', 'err'); return; }
   const fecha = new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
-  let csv = "ID Alumno,Nombre,Hora,Fecha,Clase,Estado\n";
-  rows.forEach(r => {
-    csv += `"${r.alumnoId}","${r.nombre||''}","${r.hora}","${r.fecha}","${r.clase}","Presente"\n`;
-  });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = `asistencia_${fecha}.csv`; a.click();
-  URL.revokeObjectURL(url);
+  const csv = "ID Alumno,Nombre,Hora,Fecha,Clase,Estado,Sincronizado\n"
+    + rows.map(r =>
+        `"${r.alumnoId}","${r.nombre||''}","${r.hora}","${r.fecha}","${r.clase}","Presente","${r.syncStatus==='ok'?'Si':'No'}"`
+      ).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8;' }));
+  a.download = `asistencia_${fecha}.csv`;
+  a.click();
   toast('✅ CSV descargado!');
 }
 
-function copyJSON() {
-  const rows = [...new Map(registros.map(r=>[r.alumnoId,r])).values()];
-  navigator.clipboard.writeText(JSON.stringify(rows, null, 2))
-    .then(() => toast('✅ JSON copiado al portapapeles'))
-    .catch(()  => toast('❌ No se pudo copiar', true));
+function copyTxt() {
+  const rows = [...new Map(registros.map(r => [r.alumnoId, r])).values()];
+  if (!rows.length) { toast('No hay registros', 'err'); return; }
+  const txt = rows.map((r,i) => `${i+1}. ${r.nombre||r.alumnoId} — ${r.hora}`).join('\n');
+  navigator.clipboard.writeText(txt)
+    .then(() => toast('✅ Lista copiada!'))
+    .catch(()  => toast('No se pudo copiar', 'err'));
 }
 
-async function sendToSheets() {
-  const url  = document.getElementById('sheets-url').value.trim();
-  if (!url) { toast('Ingresá la URL del script primero', true); return; }
-  const rows = [...new Map(registros.map(r=>[r.alumnoId,r])).values()];
-  if (!rows.length) { toast('No hay registros', true); return; }
-  try {
-    toast('Enviando...');
-    await fetch(url, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ registros: rows })
-    });
-    toast('✅ Enviado a Google Sheets!');
-  } catch(e) {
-    toast('❌ Error al enviar: ' + e.message, true);
-  }
-}
-
-function clearSession() {
-  if (!confirm('¿Borrar todos los registros de esta clase y empezar de cero?')) return;
+function clearAll() {
+  if (!confirm('¿Borrar todos los registros y empezar una clase nueva?')) return;
   registros = [];
-  localStorage.removeItem('asistencia_registros');
-  updateUI();
-  toast('✅ Sesión limpiada. Lista para nueva clase.');
+  Object.keys(cooldown).forEach(k => delete cooldown[k]);
+  updateCounts();
+  renderLog();
+  toast('✅ Lista limpia. Lista para nueva clase.');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type ? `show ${type}` : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 </script>
 </body>
