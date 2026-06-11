@@ -121,7 +121,6 @@
   #toast.warn{background:#B8860B;}
   #toast.err {background:var(--red);}
 </style>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 </head>
 <body>
 
@@ -378,9 +377,8 @@ function handleQR(raw) {
 
   try {
     const url     = new URL(raw);
-    const params  = url.searchParams;
     const entries = [];
-    params.forEach((val, key) => {
+    url.searchParams.forEach((val, key) => {
       if (key.startsWith('entry.')) entries.push(val);
     });
     if (entries[0]) alumnoId = entries[0];
@@ -401,10 +399,9 @@ function handleQR(raw) {
   const clase = document.getElementById('clase-input').value || '—';
   const isDup = registros.some(r => r.alumnoId === alumnoId);
 
-  const reg = { alumnoId, nombre, hora, fecha, clase, isDup, raw };
+  const reg = { alumnoId, nombre, hora, fecha, clase, isDup, syncStatus: 'pending', raw };
   registros.push(reg);
 
-  // Feedback visual y sonoro
   flashScreen();
   beep(isDup ? 'warn' : 'ok');
 
@@ -417,30 +414,29 @@ function handleQR(raw) {
   updateCounts();
   renderLog();
 
-  // ── ENVÍO AUTOMÁTICO A SHEETS ──────────────────────────────
-  if (!isDup) {
-    enviarASheets(reg);
-  }
+  // Enviar a Sheets solo si no es duplicado
+  if (!isDup) enviarASheets(reg);
 }
 
 // ── ENVÍO AUTOMÁTICO A SHEETS ─────────────────────────────────
 async function enviarASheets(reg) {
   const url = document.getElementById('sheets-url').value.trim();
-  const statusEl = document.getElementById('conn-status');
 
   if (!url) {
-    statusEl.textContent = '⚠️ URL no configurada — guardado solo local';
-    statusEl.style.color = '#B8860B';
+    reg.syncStatus = 'failed';
+    setConnStatus('⚠️ URL no configurada — registros guardados solo localmente', '#B8860B');
+    renderLog();
     return;
   }
 
-  statusEl.textContent = '🔄 Enviando...';
-  statusEl.style.color = 'var(--blue)';
+  reg.syncStatus = 'sending';
+  renderLog();
+  setConnStatus('🔄 Enviando...', 'var(--blue)');
 
   try {
     await fetch(url, {
-      method: 'POST',
-      mode:   'no-cors',   // necesario para Apps Script
+      method:  'POST',
+      mode:    'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         alumnoId: reg.alumnoId,
@@ -451,15 +447,17 @@ async function enviarASheets(reg) {
       })
     });
 
-    // no-cors no devuelve respuesta, pero si no lanza error = OK
-    statusEl.textContent = `✅ Último enviado: ${reg.nombre || reg.alumnoId} (${reg.hora})`;
-    statusEl.style.color = 'var(--green)';
+    // Con mode: no-cors no recibimos respuesta, pero si no lanza excepción = enviado OK
+    reg.syncStatus = 'ok';
+    setConnStatus(`✅ Enviado: ${reg.nombre || reg.alumnoId} a las ${reg.hora}`, 'var(--green)');
 
   } catch(err) {
-    statusEl.textContent = `❌ Error de red — ${reg.nombre || reg.alumnoId} guardado localmente`;
-    statusEl.style.color = 'var(--red)';
-    // el registro ya está en el array local, no se pierde
+    reg.syncStatus = 'failed';
+    setConnStatus(`❌ Sin conexión — ${reg.nombre || reg.alumnoId} guardado localmente`, 'var(--red)');
   }
+
+  renderLog();
+  updateCounts();
 }
 
 // ── PROBAR CONEXIÓN ───────────────────────────────────────────
