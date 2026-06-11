@@ -599,7 +599,7 @@ function refreshExport() {
 function exportCSV() {
   const rows = [...new Map(registros.map(r => [r.alumnoId, r])).values()];
   if (!rows.length) { toast('No hay registros', 'err'); return; }
-  const fecha = new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+  const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric'}).replace(/\//g,'-');
   const csv = "ID Alumno,Nombre,Hora,Fecha,Clase,Estado,Sincronizado\n"
     + rows.map(r =>
         `"${r.alumnoId}","${r.nombre||''}","${r.hora}","${r.fecha}","${r.clase}","Presente","${r.syncStatus==='ok'?'Si':'No'}"`
